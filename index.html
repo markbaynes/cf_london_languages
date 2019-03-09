@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="Mark Baynes">
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>London's Loom of Languages</title>
+
+    <!-- JS Libraries --> 
+    <script src="js/d3.min.js"></script>
+    <script src="js/jquery-1.12.2.min.js"></script>
+    <script src="js/d3-tip.js"></script>
+    <script src="js/crossfilter.min.js"></script>
+    <script src="js/dc.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/colorbrewer.js"></script>
+
+    <!-- CSS --> 
+    <link rel="stylesheet" type="text/css" href="css/dc.css">
+    <link rel="stylesheet" type="text/css" href="css/colorbrewer.css">
+    <link rel="stylesheet" type="text/css" href="css/custom-styles.css">
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="css/grid.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    [endif]-->
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="page-header">
+        <h1>London's Language Loom</h1>
+        <p class="lead">All data excludes children between 0-3 years of age.</p>
+      </div>
+
+      <h3>Lorem ipsum dolor sit amet, consectetur.</h3>
+      <p></p>
+      <div class="row">
+        <div class="col-xs-6 col-lg-4" id='dc-language-chart' style='border: #D3D3D3 solid thin;'></div>
+        <div class="col-xs-12 col-sm-6 col-lg-8" id='dc-london-map' style='border: #D3D3D3 solid thin;'></div>
+      </div>
+
+      <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-8" id='dc-bar-chart' style='border: #D3D3D3 solid thin;'></div>
+        <div class="col-xs-6 col-lg-4" id='dc-pie-graph'></div>
+
+      </div>
+
+      <div class="row">
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+      </div>
+
+<h3>Data table below here.</h3>
+      <p></p>
+      <div class="row">
+          <table class="table">
+    
+  </table>
+        <div class="col-xs-12 col-sm-6 col-lg-8">
+           <table class='table table-hover' id='dc-population-table'>
+        <thead>
+          <tr class='header'>
+            <th>Language</th>
+            <th>Borough</th>
+            <th>Total language speakers</th>
+            <th>Percentage of language speakers</th>
+          </tr>
+        </thead>
+      </table>
+        </div>
+
+        <div class="col-xs-6 col-lg-4">.col-xs-6 .col-lg-4</div>
+      </div>
+      <div class="row">
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+        <div class="col-xs-6 col-sm-4">.col-xs-6 .col-sm-4</div>
+      </div>
+
+    </div> <!-- /container -->
+
+<script type="text/javascript">
+d3.csv("../data/spokenLanguage-04.csv") 
+  .row(function(d) {
+  return {
+    languageID: +d.languageID,
+    languageName: d.language,
+    boroName: d.borough,
+    geoCode: d.geoGSS,
+    speakersTotal: +d.speakersNum,
+    speakersProportion: +d.speakersProportion,
+    languageRank: +d.languageRank
+   };
+  })
+    .get(function(error, dataset) {
+      if (!error) {
+        dataset.forEach(function(d,i) {
+        });
+      } else {
+        // handle error
+      }
+
+  
+d3.json("data/geo/boroughSimp.json", function (londonJson) {
+ 
+var myAccessor = (function(d) { return d.value.languageName; })
+
+// Colorbrewer 20c
+var geoLondonColours = d3.scale.category20c();
+
+// Formatting numbers etc.
+
+var thisPercentage = d3.format("%");
+var thisNumber = d3.format("0,000")
+
+
+
+main(dataset); // Call to main function.
+
+<!-- EVERYTHING GOES IN HERE --!> 
+ 
+function main(dataset) {
+  var ndx = crossfilter(dataset);
+  var all = ndx.groupAll();
+
+  var boroughLanguageRowChart = dc.rowChart("#dc-language-chart");
+  var boroughBarChart = dc.barChart("#dc-bar-chart");
+  var pieChart = dc.pieChart("#dc-pie-graph");
+  var dataTable = dc.dataTable("#dc-population-table");
+  var londonMap = dc.geoChoroplethChart("#dc-london-map");
+
+
+
+// Dimensions 
+
+
+var languageDimension = ndx.dimension(function(d) {return d.languageName;}),
+  languageTotalsGrouping = languageDimension.group().reduceSum(function(d) {return d.speakersTotal; });
+
+var boroughDimension = ndx.dimension(function(d) {return d.boroName;}),
+  language2Grouping = boroughDimension.group().reduceSum(function(d) {return d.languageRank; });
+
+var boroughBarDimension = ndx.dimension(function(d) {
+    console.log(d.boroName);
+  return d.boroName;
+  });
+  
+var boroughBarGroup = boroughBarDimension.group().reduceSum(function(d) {
+    console.log(d.speakersTotal);
+  return +d.speakersTotal;
+  });
+
+
+function reduceAdd(p,v) {
+    if (v.languageRank == 2 )
+    {
+    p.borough += v.boroName;
+    p.thelanguageID += v.languageID;
+    p.theLanguageName += v.languageName;
+    p.speakers += v.speakersTotal;
+    p.proportion += v.speakersProportion ;    
+    }
+    else {
+    }
+        return p;
+    }
+function reduceRemove(p,v) {
+    if (v.languageRank == 2 )
+    {
+    p.borough -= v.boroName;
+    p.thelanguageID -= v.languageID;
+    p.theLanguageName -= v.languageName;
+    p.speakers -= v.speakersTotal;
+    p.proportion -= v.speakersProportion ;
+    }
+    else {
+    }
+        return p;
+    }
+function reduceInitial() {
+    return {
+    borough:"",
+    thelanguageID:"",
+    theLanguageName:"",
+    speakers:0,
+    proportion:0
+    };
+    }
+
+// Call to reduce function to get the Grouping for choropleth.
+
+language2Grouping.reduce(reduceAdd,reduceRemove,reduceInitial);
+
+language2Grouping.all();
+
+<!-- Choro map -->
+
+var projection = d3.geo.mercator()
+       .center([0.12,51.490]) 
+       .scale(39000)
+
+// svg.call(tip);
+
+
+londonMap
+  .width(750)
+  .height(500)
+  .transitionDuration(1000)
+  .dimension(boroughDimension)  
+  .group(language2Grouping)
+  .projection(projection)
+    .valueAccessor(function (d) {
+                            return d.value.thelanguageID;
+                    })
+  .overlayGeoJson(londonJson.features, "borough", function(d) {return d.properties.NAME;})
+
+
+
+
+<!-- Row chart -->
+
+
+boroughLanguageRowChart
+    .width(350)
+    .height(500)
+    .margins({top: 20, right: 20, bottom: 30, left: 5})
+    .dimension(languageDimension)
+    .group(languageTotalsGrouping)
+    .turnOnControls(true)
+    .label(function(d) {return d.key})   
+    .title(function(d){return d.value;})  // Tooltip 
+      .elasticX(true)
+
+<!-- Bar chart -->
+    
+
+boroughBarChart
+    .width(750)
+    .height(300)
+    .margins({top: 10, right: 0, bottom: 90, left: 60})
+    .dimension(boroughBarDimension)
+    .group(boroughBarGroup)
+    .gap(5)
+    .elasticY(true)
+    .x(d3.scale.ordinal().domain(33)) 
+    .xUnits(dc.units.ordinal);
+
+     // Renderlet to format the x axis text.
+        boroughBarChart.on("renderlet", function(chart) {
+            // mix of dc API and d3 manipulation
+            chart.selectAll("g.x text").attr('transform', "rotate(-45)").style("text-anchor", "end");
+        });
+    
+
+
+
+<!-- Pie chart -->
+
+
+pieChart
+      .radius(100)
+      .innerRadius(40)
+      .dimension(languageDimension)
+      .group(languageTotalsGrouping)  
+      .turnOnControls(true)
+    .colors(d3.scale.category20b())
+    .label(function(d){return d.key;})  // Need to display language as well .
+
+  
+
+
+
+<!-- Data Table -->
+
+dataTable
+    .dimension(boroughDimension)
+    .group(function(d) { return ""})
+    .size(30)
+    .columns([
+              function(d) { return d.languageName; },
+            function(d) { return d.boroName; },
+            function(d) { return thisNumber(d.speakersTotal); },
+            function(d) { return thisPercentage(d.speakersProportion); },
+    ])
+    .sortBy(function(d){ return d.speakersTotal; })
+    .order(d3.descending);
+
+
+
+  
+function print_filter(filter){
+  var f=eval(filter);
+  if (typeof(f.length) != "undefined") {}else{}
+  if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+  if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+  console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+    }  // Extent of print filter.
+  } // Extent of MAIN function 
+<!-- DOWN TO HERE --!> 
+    dc.renderAll(); // Render the charts.
+  }); // Extent of JSON import function  
+  }); // extent of d3.csv function
+</script>
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="assets/js/ie10-viewport-bug-workaround.js"></script>
+  </body>
+</html>

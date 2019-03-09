@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta http-equiv="content-type" content="text/html; charset=UTF8">
+<title>Choropleth exploration</title>
+
+
+<script src="local_lib/d3.min.js"></script>
+<script src="local_lib/crossfilter.js"></script>
+
+<!-- Local JS libraries  -->
+<script src="../local_lib/dc.min.js"></script>
+<script src="../local_lib/jquery-1.11.3.min.js"></script>
+<script src="../local_lib/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="../local_lib/colorbrewer.js"></script>
+<script src="../local_lib/colorbrewer.js"></script>
+
+<!-- Local JS styles  -->
+<link rel="stylesheet" type="text/css" href="../css/patterns.css">
+<link rel="stylesheet" type="text/css" href="../css/custom-styles.css">
+<link rel="stylesheet" type="text/css" href="../css/dc.css">
+<link rel="stylesheet" type="text/css" href="../css/colorbrewer.css">
+<link rel="stylesheet" type="text/css" href="../local_lib/bootstrap-3.3.5/css/bootstrap.min.css"> 
+<link rel="stylesheet" type="text/css" href="../local_lib/bootstrap-3.3.5/css/bootstrap-theme.css"> 
+
+</head>
+<body>
+<div class='container' style='font: 12px sans-serif;'>
+<div class="row">
+	<div id='dc-london-map'><h3>Map</h3></div>
+</div>
+</div>
+
+<script type="text/javascript">
+d3.csv("../data/spokenLanguage-04.csv") 
+	.row(function(d) {
+	return {
+		languageID: +d.languageID,
+		languageName: d.language,
+		boroName: d.borough,
+		geoCode: d.geoGSS,
+		speakersTotal: +d.speakersNum,
+		speakersProportion: +d.speakersProportion,
+		languageRank: +d.languageRank
+ 	 };
+  })
+  	.get(function(error, dataset) {
+	    if (!error) {
+	      dataset.forEach(function(d,i) {
+	      });
+	    } else {
+	      // handle error
+	    }
+    
+// console.log(JSON.stringify(dataset)); // Just a check to see if the data has been imported correctly. 
+  
+d3.json("../data/geo/boroughSimp.json", function (londonJson) {
+ 
+var myAccessor = (function(d) { return d.value.languageName; })
+
+// Original 
+var secondaryLanguagesID = [2,3,6,9,15,17,19,21,22,26,28,30,31]
+
+// Shuffled 
+// var secondaryLanguagesID = [28,2,26,3,6,31,30,21,17,19,22,9,15]
+
+// Colorbrewer 20c
+var geoLondonColours = d3.scale.category20c();
+
+
+main(dataset); // Call to main function.
+ 
+<!-- EVERYTHING GOES IN HERE --!> 
+ 
+function main(dataset) {
+	var ndx = crossfilter(dataset);
+	var all = ndx.groupAll();
+//	var languageChart = dc.rowChart("#dc-language-chart");
+//	var pieChart = dc.pieChart("#dc-pie-graph");
+//	var dataTable = dc.dataTable("#dc-population-table");
+	var londonMap = dc.geoChoroplethChart("#dc-london-map");
+
+// Dimensions	
+	// Now we need a group of Boroughs and their secondary language, e.g. French, Bengali, etc.
+
+
+	var boroughDimension = ndx.dimension(function(d) {return d.boroName;}),
+	language2Grouping = boroughDimension.group().reduceSum(function(d) {return d.languageRank; });
+
+
+function reduceAdd(p,v) {
+		if (v.languageRank == 2 )
+		{
+		p.borough += v.boroName;
+		p.thelanguageID += v.languageID;
+		p.theLanguageName += v.languageName;
+		p.speakers += v.speakersTotal;
+		p.proportion += v.speakersProportion ;		
+		}
+		else {
+		}
+				return p;
+		}
+function reduceRemove(p,v) {
+		if (v.languageRank == 2 )
+		{
+		p.borough -= v.boroName;
+		p.thelanguageID -= v.languageID;
+		p.theLanguageName -= v.languageName;
+		p.speakers -= v.speakersTotal;
+		p.proportion -= v.speakersProportion ;
+		}
+		else {
+		}
+				return p;
+		}
+function reduceInitial() {
+		return {
+		borough:"",
+		thelanguageID:"",
+		theLanguageName:"",
+		speakers:0,
+		proportion:0
+		};
+		}
+
+language2Grouping.reduce(reduceAdd,reduceRemove,reduceInitial);
+
+language2Grouping.all();
+
+// Choro map
+
+var	projection = d3.geo.mercator()
+       .center([0.12,51.490]) 
+       .scale(40000)
+
+
+
+// londonMap.on("renderlet", function(chart) {
+//             chart.selectAll("g").style("fill", "circles-1");
+//         });
+
+
+londonMap
+	.width(600)
+	.height(500)
+	.dimension(boroughDimension)  
+	.group(language2Grouping)
+	.projection(projection)
+    .valueAccessor(function (d) {
+                            return d.value.thelanguageID;
+                    })
+	.overlayGeoJson(londonJson.features, "borough", function(d) {return d.properties.NAME;}) 
+	.title(function (d) {
+            return 'Borough: ' + d.key + '  Language ID is: ' + d.value; })
+    londonMap.on("renderlet", function(chart) {
+            chart.selectAll("g").style("fill", "circles-1");
+        }); 
+
+	
+function print_filter(filter){
+	var f=eval(filter);
+	if (typeof(f.length) != "undefined") {}else{}
+	if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+	if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+	console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+		}  // Extent of print filter.
+	} // Extent of MAIN function 
+<!-- DOWN TO HERE --!> 
+		dc.renderAll();	// Render the charts.
+	}); // Extent of JSON import function  
+  }); // extent of d3.csv function
+</script>
+
+
+<!-- LiveReload Snippet dev only -->
+<script>document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1"></' + 'script>')</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta http-equiv="content-type" content="text/html; charset=UTF8">
+<title>Main working</title>
+
+<!-- Based on the tutorial http://www.codeproject.com/Articles/693841/Making-Dashboards-with-Dc-js-Part-1-Using-Crossfil by The Myth --!>
+
+<!-- Javascipt libraries --!>
+<script src="local_lib/d3.min.js"></script>
+<script src="local_lib/crossfilter.js"></script>
+<script src="local_lib/dc.min.js"></script>
+<script src="local_lib/jquery-1.11.3.min.js"></script>
+<script src="local_lib/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+
+<!-- CSS --!>
+<link rel="stylesheet" type="text/css" href="css/custom-styles.css">
+<link rel="stylesheet" type="text/css" href="css/dc.css">
+<link rel="stylesheet" type="text/css" href="local_lib/bootstrap-3.3.5/css/bootstrap.min.css"> 
+<link rel="stylesheet" type="text/css" href="local_lib/bootstrap-3.3.5/css/bootstrap-theme.css"> 
+
+</head>
+<body>
+
+<!-- Set up DOM elements before the script loads!!!!  --!>
+
+<div class='container' style='font: 12px sans-serif;'>
+
+      <div class="page-header">
+        <h1>localhost</h1>
+        <p class="lead">Lorem ipsum</p>
+      </div>
+
+      <h3>Quisque eget odio</h3>
+      <p>Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus.
+.</p>
+      <div class="row">
+        <div class="col-md-12" id='dc-population-chart'></div>
+      </div>
+
+
+</div>
+
+<!-- Script  --!>
+<script type="text/javascript">
+
+var boroughChart = dc.barChart("#dc-population-chart");
+
+
+
+d3.csv("data/MainLanguage.csv", function (data) { 
+	var ndx = crossfilter(data);
+	var all = ndx.groupAll();
+
+
+var boroughDimension = ndx.dimension(function(d) {
+		console.log(d.bName);
+	return d.bName;
+	});
+	
+var boroughGroup = boroughDimension.group().reduceSum(function(d) {
+		console.log(d.bPopulation);
+	return +d.bPopulation;
+	});
+	
+<!-- Bar chart --!>
+  
+boroughChart
+		.width(1200)
+		.height(400)
+		.margins({top: 10, right: 10, bottom: 80, left: 60})
+		.dimension(boroughDimension)
+		.group(boroughGroup)
+		.gap(5)
+		.x(d3.scale.ordinal().domain(33))	
+		.xUnits(dc.units.ordinal);
+		
+		
+		
+boroughChart.renderlet(function(chart){
+  boroughChart.selectAll("g.x text")
+    	.attr('transform', "rotate(-45)")
+	.style("text-anchor", "end"); 
+
+ 	}); 
+
+	
+// print_filter("boroughDimension");
+// print_filter("boroughGroup");
+
+  // Utility
+
+function print_filter(filter){
+	var f=eval(filter);
+	if (typeof(f.length) != "undefined") {}else{}
+	if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+	if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+	console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+}
+
+		
+
+
+// Render the charts
+dc.renderAll();
+ 	}); 
+
+</script>
+
+
+
+
+</body>
+</html>

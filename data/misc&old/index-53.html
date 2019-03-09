@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta http-equiv="content-type" content="text/html; charset=UTF8">
+<title>Main working</title>
+
+<!-- Javascipt libraries --!>
+<script src="local_lib/d3.min.js"></script>
+<script src="local_lib/crossfilter.js"></script>
+<script src="local_lib/dc.min.js"></script>
+<script src="local_lib/jquery-1.11.3.min.js"></script>
+<script src="local_lib/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="local_lib/colorbrewer.js"></script>
+
+<!-- CSS --!>
+<link rel="stylesheet" type="text/css" href="css/custom-styles.css">
+<link rel="stylesheet" type="text/css" href="css/dc.css">
+<link rel="stylesheet" type="text/css" href="css/colorbrewer.css">
+<link rel="stylesheet" type="text/css" href="local_lib/bootstrap-3.3.5/css/bootstrap.min.css"> 
+<link rel="stylesheet" type="text/css" href="local_lib/bootstrap-3.3.5/css/bootstrap-theme.css"> 
+
+</head>
+<body>
+
+<div class='container' style='font: 12px sans-serif;'>
+<div class="row">
+<h3>London's Language Loom</h3>
+<p>All data excludes children between 0-3 years of age.</p>
+<div class="col-md-4" id='dc-language-chart' class='filter'><h4>London's world languages</h4></div>
+<div class="col-md-8" id='dc-borough-chart'><h2>Bar chart language with greatest % by borough across 8 columns</h2></div>
+<div class="col-md-3"  id='dc-pie-graph' class='filter'><h4>Proportion 3 columns (layout error)</h4></div>
+<div class="col-md-5" ><h4>Put something smaller in here across 5 columns</h4></div>
+</div>
+<div class="row">
+<div class="col-md-5"><h4>Borough languages data table across 5 columns</h4>
+<table class='table table-hover' id='population-table'>
+<thead>
+<tr class='header'>
+<th>Language</th> 
+<th>Borough</th>
+<th>Speakers</th>
+<th>Proportion </th>
+</tr>
+</thead>
+</table>
+</div>
+<div class="col-md-4">col-md-4</div>
+<div class="col-md-3">col-md-3</div>
+</div>
+</div>
+
+<!-- Script  --!>
+<script type="text/javascript">
+
+// Define the charts for DOM
+
+var languageRowChart = dc.rowChart("#dc-language-chart");
+var pieChart = dc.pieChart("#dc-pie-graph");
+var dataTable = dc.dataTable("#population-table");
+var boroughBarChart = dc.barChart("#dc-borough-chart");
+var percentageFormat = d3.format("%");
+
+// Cheated here - removed English from data and now using spokenLanguage-03.csv :)
+
+
+var dataset;
+
+d3.csv("data/spokenLanguage-04.csv")
+    .row(function(d) {
+        return {
+            languageID: +d.languageID,
+            languageName: d.language,
+            boroName: d.borough,
+            geoCode: d.geoGSS,
+            speakersTotal: +d.speakersNum,
+            speakersProportion: +d.speakersProportion,
+            languageRank: +d.languageRank
+        };
+
+        // Call to main charting procedure
+        main(dataset);
+
+        function main(dataset) {
+            var ndx = crossfilter(dataset);
+            var all = ndx.groupAll();
+        }
+
+        <!-- ONLY TEN LANGUAGES AS REDUCED DATASET --!>
+
+
+        // print_filter("languageTotalsGrouping"); 
+        // For bar chart
+        var proportionDimension = ndx.dimension(function(d) {
+            return d.speakersProportion;
+        });
+        // print_filter("proportionDimension"); 
+
+        var boroughDimension = ndx.dimension(function(d) {
+            return d.boroName;
+        });
+        var boroughGrouping = boroughDimension.group();
+
+        // boroughGrouping.reduce(reduceAdd,reduceRemove,reduceInitial);
+        // boroughGrouping.all();
+        // print_filter("boroughGrouping"); 
+
+
+        <!-- Map reduceSum does the main work for row, pie, data table. --!>
+        
+        var languageDimension = ndx.dimension(function(d) {
+            return d.languageName;
+        });
+        var languageTotalsGrouping = languageDimension.group().reduce(
+            function(p, v) {
+                if (v.languageRank == 2) {
+                    p.borough += v.boroName;
+                    p.language += v.languageName;
+                    p.speakers += v.speakersTotal;
+                    p.proportion += v.speakersProportion;
+                } else {}
+                return p;
+            },
+            function(p, v) {
+                if (v.languageRank == 2) {
+                    p.borough -= v.boroName;
+                    p.language -= v.languageName;
+                    p.speakers -= v.speakersTotal;
+                    p.proportion -= v.speakersProportion;
+                } else {}
+                return p;
+            },
+            function() {
+                return {
+                    borough: "",
+                    language: "",
+                    speakers: 0,
+                    proportion: 0
+                }
+            }
+        );
+
+<!-- Choropleth map --!>
+
+        <!-- Row  chart --!>
+        
+        languageRowChart
+            .width(350)
+            .height(700)
+            .margins({
+                top: 10,
+                right: 20,
+                bottom: 30,
+                left: 10
+            })
+            .dimension(languageDimension)
+            .group(languageTotalsGrouping)
+            .turnOnControls(true)
+            .colors(d3.scale.category20b())
+            .label(function(d) {
+                return d.key
+            })
+            .title(function(d) {
+                return d.value;
+            }) // Tooltip 
+            .elasticX(true)
+            .xAxis().ticks(6)
+
+
+        <!-- Bar chart --!>
+        // Needs percentageFormat sorted. Add to renderlet?  
+        boroughBarChart
+            .width(800)
+            .height(300)
+            .margins({
+                top: 10,
+                right: 10,
+                bottom: 110,
+                left: 60
+            })
+            .dimension(proportionDimension)
+            .group(boroughGrouping)
+            .colors(d3.scale.category20b())
+            .valueAccessor(function(p) {
+                return p.value.proportion;
+            })
+            .gap(5)
+            .x(d3.scale.ordinal().domain(33))
+            .xUnits(dc.units.ordinal)
+            // Renderlet to format the x axis text.
+        boroughBarChart.on("renderlet", function(chart) {
+            // mix of dc API and d3 manipulation
+            chart.selectAll("g.x text").attr('transform', "rotate(-45)").style("text-anchor", "end");
+        });
+
+        <!-- Pie chart --!>
+
+
+        pieChart
+            .width(300)
+            .height(300)
+            .radius(100)
+            .innerRadius(20)
+            .dimension(languageDimension)
+            .group(languageTotalsGrouping)
+            .turnOnControls(true)
+            .colors(d3.scale.category20b())
+            .label(function(d) {
+                return d.key;
+            }) // Need to display language as well .
+
+
+        <!-- Data Table --!>
+
+        dataTable.width(400).height(800)
+            .dimension(boroughDimension)
+            .group(function(d) {
+                return ""
+            })
+            .size(30)
+            .columns([
+                function(d) {
+                    return d.languageName;
+                },
+                function(d) {
+                    return d.boroName;
+                },
+                function(d) {
+                    return d.speakersTotal;
+                },
+                function(d) {
+                    return percentageFormat(d.speakersProportion);
+                },
+            ])
+            .sortBy(function(d) {
+                return d.speakersTotal;
+            })
+            .order(d3.descending)
+
+
+        //  Utility function 
+        function print_filter(filter) {
+            var f = eval(filter);
+            if (typeof(f.length) != "undefined") {} else {}
+            if (typeof(f.top) != "undefined") {
+                f = f.top(Infinity);
+            } else {}
+            if (typeof(f.dimension) != "undefined") {
+                f = f.dimension(function(d) {
+                    return "";
+                }).top(Infinity);
+            } else {}
+            console.log(filter + "(" + f.length + ") = " + JSON.stringify(f).replace("[", "[\n\t").replace(/}\,/g, "},\n\t").replace("]", "\n]"));
+        }
+
+        // Render the charts
+        dc.renderAll();
+    })
+</script>
+
+</body>
+</html>

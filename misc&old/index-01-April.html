@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta http-equiv="content-type" content="text/html; charset=UTF8">
+<title>London's Loom of Languages April 2016</title>
+
+<!-- Credits thanks to: 
+
+	@saraquigley for her lovely dc.js example https://github.com/saraquigley/uc-trends  -->
+<!-- External JS library for D3.tip  -->
+
+
+<!-- <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+ -->
+
+<!-- JS Libraries --> 
+<script src="d3.min.js"></script>
+<script src="jquery-1.12.2.min.js"></script>
+<script src="d3-tip.js"></script>
+<script src="crossfilter.min.js"></script>
+<script src="dc.min.js"></script>
+<script src="bootstrap.min.js"></script>
+<script src="colorbrewer.js"></script>
+
+
+<!-- CSS --> 
+<link rel="stylesheet" type="text/css" href="bootstrap-theme.min.css">
+<link rel="stylesheet" type="text/css" href="dc.css">
+<link rel="stylesheet" type="text/css" href="colorbrewer.css">
+<link rel="stylesheet" type="text/css" href="custom-styles.css">
+
+
+</head>
+<body>
+
+<div class=".container">
+<h3>Mixed: mobile and desktop</h3>
+	<div class="row">
+        <div class="col-xs-12 col-md-8">.col-xs-12 .col-md-8</div>
+        <div class="col-xs-6 col-md-4">.col-xs-6 .col-md-4</div>
+      </div>
+      <div class="row">
+        <div class="col-xs-6 col-md-4">.col-xs-6 .col-md-4</div>
+        <div class="col-xs-6 col-md-4">.col-xs-6 .col-md-4</div>
+        <div class="col-xs-6 col-md-4">.col-xs-6 .col-md-4</div>
+      </div>
+      <div class="row">
+        <div class="col-xs-6">.col-xs-6</div>
+        <div class="col-xs-6">.col-xs-6</div>
+      </div>
+</div>
+
+
+
+<script type="text/javascript">
+d3.csv("../data/spokenLanguage-04.csv") 
+	.row(function(d) {
+	return {
+		languageID: +d.languageID,
+		languageName: d.language,
+		boroName: d.borough,
+		geoCode: d.geoGSS,
+		speakersTotal: +d.speakersNum,
+		speakersProportion: +d.speakersProportion,
+		languageRank: +d.languageRank
+ 	 };
+  })
+  	.get(function(error, dataset) {
+	    if (!error) {
+	      dataset.forEach(function(d,i) {
+	      });
+	    } else {
+	      // handle error
+	    }
+
+  
+d3.json("../data/geo/boroughSimp.json", function (londonJson) {
+ 
+var myAccessor = (function(d) { return d.value.languageName; })
+
+// Original 
+// var secondaryLanguagesID = [2,3,6,9,15,17,19,21,22,26,28,30,31]
+
+// Colorbrewer 20c
+var geoLondonColours = d3.scale.category20c();
+
+// Tip function
+
+
+main(dataset); // Call to main function.
+
+<!-- EVERYTHING GOES IN HERE --!> 
+ 
+function main(dataset) {
+	var ndx = crossfilter(dataset);
+	var all = ndx.groupAll();
+
+	var boroughRowChart = dc.rowChart("#dc-language-row-chart");
+	var boroughBarChart = dc.barChart("#dc-bar-chart");
+	var pieChart = dc.pieChart("#dc-pie-graph");
+	var dataTable = dc.dataTable("#dc-population-table");
+	var londonMap = dc.geoChoroplethChart("#dc-london-map");
+
+
+
+// Dimensions	
+
+
+var languageDimension = ndx.dimension(function(d) {return d.languageName;}),
+	languageTotalsGrouping = languageDimension.group().reduceSum(function(d) {return d.speakersTotal; });
+
+var boroughDimension = ndx.dimension(function(d) {return d.boroName;}),
+	language2Grouping = boroughDimension.group().reduceSum(function(d) {return d.languageRank; });
+
+var boroughBarDimension = ndx.dimension(function(d) {
+		console.log(d.boroName);
+	return d.boroName;
+	});
+	
+var boroughBarGroup = boroughBarDimension.group().reduceSum(function(d) {
+		console.log(d.speakersTotal);
+	return +d.speakersTotal;
+	});
+
+
+function reduceAdd(p,v) {
+		if (v.languageRank == 2 )
+		{
+		p.borough += v.boroName;
+		p.thelanguageID += v.languageID;
+		p.theLanguageName += v.languageName;
+		p.speakers += v.speakersTotal;
+		p.proportion += v.speakersProportion ;		
+		}
+		else {
+		}
+				return p;
+		}
+function reduceRemove(p,v) {
+		if (v.languageRank == 2 )
+		{
+		p.borough -= v.boroName;
+		p.thelanguageID -= v.languageID;
+		p.theLanguageName -= v.languageName;
+		p.speakers -= v.speakersTotal;
+		p.proportion -= v.speakersProportion ;
+		}
+		else {
+		}
+				return p;
+		}
+function reduceInitial() {
+		return {
+		borough:"",
+		thelanguageID:"",
+		theLanguageName:"",
+		speakers:0,
+		proportion:0
+		};
+		}
+
+// Call to reduce function to get the Grouping for choropleth.
+
+language2Grouping.reduce(reduceAdd,reduceRemove,reduceInitial);
+
+language2Grouping.all();
+
+<!-- Choro map -->
+
+var	projection = d3.geo.mercator()
+       .center([0.12,51.490]) 
+       .scale(39000)
+
+// svg.call(tip);
+
+
+londonMap
+	.width(750)
+	.height(500)
+	.transitionDuration(1000)
+	.dimension(boroughDimension)  
+	.group(language2Grouping)
+	.projection(projection)
+    .valueAccessor(function (d) {
+                            return d.value.thelanguageID;
+                    })
+	.overlayGeoJson(londonJson.features, "borough", function(d) {return d.properties.NAME;})
+
+
+
+
+<!-- Row chart -->
+
+
+boroughRowChart
+		.width(350)
+		.height(500)
+		.margins({top: 20, right: 20, bottom: 30, left: 5})
+		.dimension(languageDimension)
+		.group(languageTotalsGrouping)
+		.turnOnControls(true)
+		.label(function(d) {return d.key})   
+		.title(function(d){return d.value;})  // Tooltip 
+   		.elasticX(true)
+
+<!-- Bar chart -->
+   	
+
+boroughBarChart
+		.width(750)
+		.height(300)
+		.margins({top: 10, right: 0, bottom: 90, left: 60})
+		.dimension(boroughBarDimension)
+		.group(boroughBarGroup)
+		.gap(5)
+		.elasticY(true)
+		.x(d3.scale.ordinal().domain(33))	
+		.xUnits(dc.units.ordinal);
+
+		 // Renderlet to format the x axis text.
+        boroughBarChart.on("renderlet", function(chart) {
+            // mix of dc API and d3 manipulation
+            chart.selectAll("g.x text").attr('transform', "rotate(-45)").style("text-anchor", "end");
+        });
+		
+
+
+
+<!-- Pie chart -->
+
+
+pieChart
+	.width(200)
+    	.height(200)
+    	.radius(60)
+    	.innerRadius(20)
+    	.dimension(languageDimension)
+    	.group(languageTotalsGrouping)  
+    	.turnOnControls(true)
+		.colors(d3.scale.category20b())
+		.label(function(d){return d.key;})  // Need to display language as well .
+
+ 	
+
+
+
+<!-- Data Table -->
+
+dataTable.width(400).height(800)
+    .dimension(boroughDimension)
+    .group(function(d) { return ""})
+    .size(30)
+    .columns([
+    					function(d) { return d.languageName; },
+						function(d) { return d.boroName; },
+						function(d) { return d.speakersTotal; },
+						function(d) { return d.speakersProportion; },
+    ])
+    .sortBy(function(d){ return d.speakersTotal; })
+    .order(d3.descending);
+
+
+
+
+	
+function print_filter(filter){
+	var f=eval(filter);
+	if (typeof(f.length) != "undefined") {}else{}
+	if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+	if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+	console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+		}  // Extent of print filter.
+	} // Extent of MAIN function 
+<!-- DOWN TO HERE --!> 
+		dc.renderAll();	// Render the charts.
+	}); // Extent of JSON import function  
+  }); // extent of d3.csv function
+</script>
+
+
+	</body>
+</html>
